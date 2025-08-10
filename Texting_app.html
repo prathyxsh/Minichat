@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Simple Messaging App (HTML + JS)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f4f6fb;
+      --card:#fff;
+      --accent:#ffd400; /* yellow */
+      --accent-2:#007bff; /* blue */
+      --muted:#6b7280;
+      --black:#111;
+      --white:#fff;
+      --success:#16a34a;
+    }
+    *{box-sizing:border-box;font-family:Inter,system-ui,Arial,Helvetica,sans-serif}
+    body{
+      margin:0;min-height:100vh;background:linear-gradient(180deg,#eef2ff 0%,var(--bg) 100%);
+      display:flex;align-items:center;justify-content:center;padding:20px;
+    }
+    .app{
+      width:100%;max-width:920px;background:var(--card);border-radius:12px;box-shadow:0 12px 30px rgba(17,24,39,0.08);
+      overflow:hidden;display:grid;grid-template-columns:360px 1fr;min-height:600px;
+    }
+
+    /* left column (sidebar / navigation) */
+    .left{
+      padding:18px;background:linear-gradient(180deg, #fff 0%, #fbfbfd 100%);border-right:1px solid #eee;
+    }
+    .logo{font-weight:700;letter-spacing:0.2px;color:var(--black);font-size:20px;margin-bottom:12px}
+    .small{color:var(--muted);font-size:13px;margin-bottom:18px}
+    .nav-icons{display:flex;gap:12px;margin-bottom:18px}
+    .icon-btn{
+      display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;border:none;
+      font-weight:600;color:var(--white);
+    }
+    .btn-search{background:var(--accent);color:var(--black)}
+    .btn-msg{background:var(--accent-2);color:var(--white)}
+    .btn-logout{background:#111;color:var(--white);padding:8px 10px;border-radius:8px;margin-top:12px}
+
+    /* right column */
+    .main{
+      padding:22px;
+    }
+
+    .card{
+      background:linear-gradient(180deg,#fff 0%,#fcfdff 100%);padding:18px;border-radius:10px;box-shadow:0 6px 16px rgba(16,24,40,0.04);
+    }
+
+    /* forms */
+    form{display:flex;flex-direction:column;gap:10px}
+    label{font-size:13px;color:var(--muted)}
+    input[type="text"], input[type="password"]{
+      padding:10px;border-radius:8px;border:1px solid #e6e9ef;font-size:14px;background:#fbfdff;
+    }
+    .row{display:flex;gap:10px}
+    .center{display:flex;align-items:center;justify-content:center}
+
+    .btn{
+      padding:10px;border-radius:10px;border:none;cursor:pointer;font-weight:700;
+    }
+    .btn-strong{background:#111;color:var(--white)}
+    .btn-ghost{background:transparent;border:2px solid #111;color:#111}
+
+    .muted{color:var(--muted);font-size:13px}
+    .message-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+    .conv{
+      display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;border:1px solid #f0f2f6;
+    }
+    .conv .left{display:flex;gap:10px;align-items:center}
+    .avatar{
+      width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#f0f4ff,#e6f7ff);display:flex;align-items:center;justify-content:center;font-weight:700;color:#073b4c;
+    }
+    .name{font-weight:700}
+    .last{color:var(--muted);font-size:13px}
+
+    /* chat */
+    .chat{
+      display:flex;flex-direction:column;height:460px;border-radius:8px;border:1px solid #eef2ff;overflow:hidden;
+    }
+    .chat-header{padding:12px;background:#fbfbff;border-bottom:1px solid #f1f5ff;display:flex;align-items:center;gap:12px}
+    .chat-body{flex:1;padding:12px;overflow:auto;background:linear-gradient(180deg,#fff 0,#fbfdff 100%)}
+    .msg{max-width:72%;margin-bottom:8px;padding:8px 10px;border-radius:10px;font-size:14px}
+    .msg.me{background:var(--accent-2);color:var(--white);margin-left:auto}
+    .msg.them{background:#f3f4f6;color:#111}
+    .chat-input{display:flex;padding:12px;border-top:1px solid #f1f5ff;gap:8px}
+    .chat-input input{flex:1;padding:10px;border-radius:8px;border:1px solid #e6e9ef}
+    .small-note{font-size:12px;color:var(--muted);margin-top:8px}
+
+    /* responsive */
+    @media (max-width:860px){
+      .app{grid-template-columns:1fr;min-width:320px}
+      .left{order:2}
+      .main{order:1}
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="left">
+      <div class="logo">MiniChat</div>
+      <div class="small">Simple username/password login · Search & messaging · Local storage</div>
+
+      <div class="nav-icons">
+        <button class="icon-btn btn-search" id="navSearchBtn">🔎 Search</button>
+        <button class="icon-btn btn-msg" id="navMsgBtn">💬 Messages</button>
+      </div>
+
+      <div id="sidebarInfo" class="card small" style="margin-top:12px">
+        Not logged in.
+      </div>
+
+      <div id="authBtns" style="margin-top:14px">
+        <button class="btn btn-strong" id="openSignup">Sign Up</button>
+        <button class="btn btn-ghost" id="skipBtn" style="margin-left:8px">Skip → Log In</button>
+      </div>
+
+      <div id="whenLogged" style="display:none;margin-top:12px">
+        <div class="muted">Signed in as</div>
+        <div id="currentUserDisplay" style="font-weight:800;margin-top:6px"></div>
+        <button class="btn btn-logout" id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <div class="main" id="main">
+      <!-- content updated by JS -->
+    </div>
+  </div>
+
+<script>
+/*
+  MiniChat single-file app
+  - Data stored in localStorage keys:
+     users: JSON array [{username,password,name}]
+     messages: JSON array [{from,to,text,ts}]
+     currentUser: username string or null
+*/
+
+const LS_USERS = 'mc_users_v1';
+const LS_MSGS  = 'mc_msgs_v1';
+const LS_CUR   = 'mc_current_v1';
+
+// --- helpers ---
+function readUsers(){ return JSON.parse(localStorage.getItem(LS_USERS) || '[]'); }
+function writeUsers(u){ localStorage.setItem(LS_USERS, JSON.stringify(u)); }
+function readMsgs(){ return JSON.parse(localStorage.getItem(LS_MSGS) || '[]'); }
+function writeMsgs(m){ localStorage.setItem(LS_MSGS, JSON.stringify(m)); }
+function setCurrent(u){ if(u) localStorage.setItem(LS_CUR, u); else localStorage.removeItem(LS_CUR); updateSidebar(); }
+function getCurrent(){ return localStorage.getItem(LS_CUR); }
+
+function findUser(username){
+  const u = readUsers();
+  return u.find(x=>x.username.toLowerCase()===username.toLowerCase()) || null;
+}
+
+function formatTime(ts){
+  const d = new Date(ts);
+  return d.toLocaleString();
+}
+
+// --- UI containers ---
+const main = document.getElementById('main');
+const sidebarInfo = document.getElementById('sidebarInfo');
+const authBtns = document.getElementById('authBtns');
+const whenLogged = document.getElementById('whenLogged');
+const currentUserDisplay = document.getElementById('currentUserDisplay');
+
+document.getElementById('openSignup').addEventListener('click', ()=>renderSignup());
+document.getElementById('skipBtn').addEventListener('click', ()=>renderLogin());
+document.getElementById('navSearchBtn').addEventListener('click', ()=>{ if(!getCurrent()){ renderLogin(); } else renderSearch(); });
+document.getElementById('navMsgBtn').addEventListener('click', ()=>{ if(!getCurrent()){ renderLogin(); } else renderMessagesList(); });
+document.getElementById('logoutBtn').addEventListener('click', ()=>{ setCurrent(null); renderWelcome(); });
+
+function updateSidebar(){
+  const cur = getCurrent();
+  if(cur){
+    const usr = findUser(cur);
+    whenLogged.style.display='block';
+    authBtns.style.display='none';
+    sidebarInfo.innerHTML = '<div class="small">Welcome back.</div><div class="muted">You are signed in.</div>';
+    currentUserDisplay.textContent = cur + (usr && usr.name ? ' · ' + usr.name : '');
+  } else {
+    whenLogged.style.display='none';
+    authBtns.style.display='block';
+    sidebarInfo.innerHTML = 'Not logged in.';
+  }
+}
+
+// --- views ---
+function renderWelcome(){
+  updateSidebar();
+  main.innerHTML = `
+    <div class="card">
+      <h2>Welcome</h2>
+      <p class="muted">Sign up to create an account, or skip to log in if you already have one.</p>
+      <div style="margin-top:12px">
+        <button class="btn btn-strong" id="goSignup">Sign Up</button>
+        <button class="btn btn-ghost" id="goSkip" style="margin-left:8px">Skip → Log In</button>
+      </div>
+      <p class="small-note">Buttons use contrasting colors: black/white and yellow/blue.</p>
+    </div>
+  `;
+  document.getElementById('goSignup').addEventListener('click', ()=>renderSignup());
+  document.getElementById('goSkip').addEventListener('click', ()=>renderLogin());
+}
+
+function renderSignup(){
+  updateSidebar();
+  main.innerHTML = `
+    <div class="card">
+      <h3>Create an account</h3>
+      <form id="signupForm">
+        <label>Username (required)</label>
+        <input id="su_username" type="text" required />
+        <label>Password (required)</label>
+        <input id="su_password" type="password" required />
+        <label>Name (optional — used for display in search/messages)</label>
+        <input id="su_name" type="text" />
+        <div class="row">
+          <button class="btn" id="createBtn" style="background:var(--accent);color:var(--black)">Create & Show Login</button>
+          <button class="btn btn-ghost" id="cancelCreate" type="button">Cancel</button>
+        </div>
+        <div id="signupMsg" class="muted small-note"></div>
+      </form>
+    </div>
+  `;
+  const form = document.getElementById('signupForm');
+  const msg = document.getElementById('signupMsg');
+  document.getElementById('cancelCreate').addEventListener('click', ()=>renderWelcome());
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const username = document.getElementById('su_username').value.trim();
+    const password = document.getElementById('su_password').value;
+    const name = document.getElementById('su_name').value.trim();
+
+    if(!username || !password){ msg.textContent = 'Username and password are required.'; return;}
+    if(findUser(username)){ msg.textContent = 'Username already exists — choose another.'; return;}
+
+    const users = readUsers();
+    users.push({username, password, name});
+    writeUsers(users);
+    msg.style.color = 'var(--success)';
+    msg.textContent = 'Registered. Now you can log in.';
+    // show login button
+    setTimeout(()=>renderLogin(), 700);
+  });
+}
+
+function renderLogin(preUsername=''){
+  updateSidebar();
+  main.innerHTML = `
+    <div class="card">
+      <h3>Log in</h3>
+      <form id="loginForm">
+        <label>Username</label>
+        <input id="li_username" type="text" required />
+        <label>Password</label>
+        <input id="li_password" type="password" required />
+        <div style="margin-top:8px">
+          <button class="btn btn-strong" id="loginBtn">Log In</button>
+          <button class="btn" id="toSignup" style="margin-left:8px;background:var(--accent);color:var(--black)">Sign up</button>
+        </div>
+        <div id="loginMsg" class="muted small-note"></div>
+      </form>
+    </div>
+  `;
+  document.getElementById('li_username').value = preUsername;
+  document.getElementById('toSignup').addEventListener('click', (ev)=>{ ev.preventDefault(); renderSignup(); });
+  const loginForm = document.getElementById('loginForm');
+  const loginMsg = document.getElementById('loginMsg');
+  loginForm.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const username = document.getElementById('li_username').value.trim();
+    const password = document.getElementById('li_password').value;
+    const user = findUser(username);
+    if(!user){ loginMsg.textContent = 'No such user. Try signing up.'; return; }
+    if(user.password !== password){ loginMsg.textContent = 'Wrong password.'; return; }
+    // success
+    setCurrent(user.username);
+    renderMain();
+  });
+}
+
+function renderMain(){
+  updateSidebar();
+  const cur = getCurrent();
+  if(!cur){ renderLogin(); return; }
+  const usr = findUser(cur);
+  main.innerHTML = `
+    <div class="card">
+      <h3>Main</h3>
+      <p class="muted">Signed in as <strong>${cur}${usr.name ? ' · ' + usr.name : ''}</strong></p>
+      <div style="margin-top:14px" class="row">
+        <button class="btn" id="goSearch" style="background:var(--accent);color:var(--black)">🔎 Search</button>
+        <button class="btn" id="goMsgs" style="background:var(--accent-2);color:var(--white)">💬 Messages</button>
+      </div>
+      <div style="margin-top:10px" class="small-note">You remain logged in until you log out.</div>
+    </div>
+  `;
+  document.getElementById('goSearch').addEventListener('click', ()=>renderSearch());
+  document.getElementById('goMsgs').addEventListener('click', ()=>renderMessagesList());
+}
+
+function renderSearch(){
+  updateSidebar();
+  const cur = getCurrent();
+  main.innerHTML = `
+    <div class="card">
+      <h3>Search user by username</h3>
+      <div class="muted">Type a username and press Search.</div>
+      <div style="margin-top:12px">
+        <input id="searchInput" type="text" placeholder="username..." />
+        <button class="btn" id="doSearch" style="margin-left:8px;background:var(--accent);color:var(--black)">Search</button>
+      </div>
+      <div id="searchResult" style="margin-top:12px"></div>
+    </div>
+  `;
+  const input = document.getElementById('searchInput');
+  const btn = document.getElementById('doSearch');
+  const out = document.getElementById('searchResult');
+
+  btn.addEventListener('click', ()=>{
+    const q = input.value.trim();
+    if(!q){ out.innerHTML = '<div class="muted">Type username to search.</div>'; return; }
+    const u = findUser(q);
+    if(!u){ out.innerHTML = '<div class="muted">User not found.</div>'; return; }
+    out.innerHTML = `
+      <div class="conv">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="avatar">${(u.name && u.name[0]) ? u.name[0].toUpperCase() : u.username[0].toUpperCase()}</div>
+          <div>
+            <div class="name">${u.name || '(no name)'} · <small class="muted">${u.username}</small></div>
+            <div class="last">Tap Message to open chat with this user.</div>
+          </div>
+        </div>
+        <div>
+          <button class="btn" id="messageUser" style="background:var(--accent-2);color:var(--white)">Message</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('messageUser').addEventListener('click', ()=>{
+      if(u.username === cur){ alert("You can't message yourself (for demo)."); return; }
+      openChatWith(u.username);
+    });
+  });
+}
+
+function renderMessagesList(){
+  updateSidebar();
+  const cur = getCurrent();
+  if(!cur){ renderLogin(); return; }
+  const msgs = readMsgs();
+  // collect distinct partners where from==cur OR to==cur
+  const partners = {};
+  msgs.forEach(m=>{
+    if(m.from === cur) partners[m.to] = m;
+    if(m.to === cur) partners[m.from] = m;
+  });
+  // convert to array with last timestamp
+  const arr = Object.keys(partners).map(key=>{
+    const last = msgs.filter(mm=>(mm.from===cur && mm.to===key) || (mm.from===key && mm.to===cur))
+                     .sort((a,b)=>b.ts-a.ts)[0];
+    const user = findUser(key);
+    return {username:key, name: user?user.name:'', lastText: last ? last.text : '', lastTs: last?last.ts:0};
+  }).sort((a,b)=>b.lastTs - a.lastTs);
+
+  main.innerHTML = `
+    <div class="card">
+      <h3>Messages</h3>
+      <div class="muted">Conversations</div>
+      <div id="convList" class="message-list" style="margin-top:12px">
+        ${arr.length ? arr.map(c=>`
+          <div class="conv" data-username="${c.username}">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar">${(c.name && c.name[0])?c.name[0].toUpperCase():c.username[0].toUpperCase()}</div>
+              <div>
+                <div class="name">${c.name || '(no name)'} <small class="muted">· ${c.username}</small></div>
+                <div class="last">${c.lastText ? c.lastText : '<em>No messages yet</em>'}</div>
+              </div>
+            </div>
+            <div>
+              <button class="btn" style="background:var(--accent-2);color:var(--white)" data-open="${c.username}">Open</button>
+            </div>
+          </div>
+        `).join('') : '<div class="muted">No conversations yet. Search users and message them.</div>'}
+      </div>
+    </div>
+  `;
+
+  // attach handlers for open buttons
+  document.querySelectorAll('[data-open]').forEach(btn=>{
+    btn.addEventListener('click', ()=>openChatWith(btn.getAttribute('data-open')));
+  });
+}
+
+function openChatWith(username){
+  updateSidebar();
+  const cur = getCurrent();
+  if(!cur){ renderLogin(); return; }
+  const otherUser = findUser(username);
+  if(!otherUser){ alert('User not found'); renderMessagesList(); return; }
+
+  main.innerHTML = `
+    <div class="card chat">
+      <div class="chat-header">
+        <div class="avatar">${(otherUser.name && otherUser.name[0]) ? otherUser.name[0].toUpperCase() : otherUser.username[0].toUpperCase()}</div>
+        <div>
+          <div style="font-weight:800">${otherUser.name || '(no name)'} <small class="muted">· ${otherUser.username}</small></div>
+          <div class="small-note">Chat between you (${cur}) and ${otherUser.username}</div>
+        </div>
+      </div>
+      <div class="chat-body" id="chatBody"></div>
+      <div class="chat-input">
+        <input id="chatInput" placeholder="Write a message..." />
+        <button class="btn" id="sendBtn" style="background:var(--accent-2);color:var(--white)">Send</button>
+        <button class="btn" id="backBtn" style="background:#111;color:var(--white)">Back</button>
+      </div>
+    </div>
+  `;
+
+  const chatBody = document.getElementById('chatBody');
+  const input = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const backBtn = document.getElementById('backBtn');
+
+  function loadMessages(){
+    const msgs = readMsgs().filter(m => (m.from===cur && m.to===username) || (m.from===username && m.to===cur))
+                           .sort((a,b)=>a.ts - b.ts);
+    chatBody.innerHTML = msgs.map(m=>{
+      const cls = m.from === cur ? 'msg me' : 'msg them';
+      return `<div class="${cls}"><div>${escapeHtml(m.text)}</div><div class="small-note" style="margin-top:6px;color:var(--muted);font-size:12px">${formatTime(m.ts)}</div></div>`;
+    }).join('');
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click', ()=>{
+    const text = input.value.trim();
+    if(!text) return;
+    const msgs = readMsgs();
+    msgs.push({from:cur,to:username,text,ts:Date.now()});
+    writeMsgs(msgs);
+    input.value='';
+    loadMessages();
+  });
+
+  input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); sendBtn.click(); }});
+  backBtn.addEventListener('click', ()=>renderMessagesList());
+
+  loadMessages();
+}
+
+// --- small utility ---
+function escapeHtml(s){ return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+// --- bootup: if already logged in -> main, else welcome ---
+(function boot(){
+  if(getCurrent()){
+    renderMain();
+  } else {
+    renderWelcome();
+  }
+  updateSidebar();
+})();
+
+</script>
+</body>
+</html>
